@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scientific Calculator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #10141c;
+      --panel: #1b2230;
+      --display: #111722;
+      --key: #2b3547;
+      --key-hover: #3a4860;
+      --function: #39475d;
+      --accent: #6c8cff;
+      --operator: #b77932;
+      --danger: #bd4d59;
+      --success: #21866a;
+      --text: #f3f5fa;
+      --muted: #aab4c5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, #26334b, var(--page) 65%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .app {
+      width: min(100%, 760px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 16px;
+    }
+
+    .calculator,
+    .history {
+      background: var(--panel);
+      border: 1px solid #ffffff12;
+      border-radius: 20px;
+      box-shadow: 0 24px 60px #0005;
+    }
+
+    .calculator {
+      padding: 20px;
+    }
+
+    .display {
+      min-height: 118px;
+      margin-bottom: 14px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      border-radius: 14px;
+      background: var(--display);
+    }
+
+    #expression {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 1rem;
+      text-align: right;
+    }
+
+    #result {
+      min-height: 40px;
+      overflow-x: auto;
+      color: var(--text);
+      font-size: clamp(1.7rem, 6vw, 2.4rem);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .toolbar button {
+      flex: 1;
+      min-height: 38px;
+      padding: 6px 10px;
+      font-size: 0.88rem;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    button {
+      min-width: 0;
+      min-height: 50px;
+      padding: 8px 4px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--key);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    button:hover {
+      background: var(--key-hover);
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .function {
+      background: var(--function);
+    }
+
+    .operator {
+      background: var(--operator);
+    }
+
+    .accent {
+      background: var(--accent);
+    }
+
+    .danger {
+      background: var(--danger);
+    }
+
+    .equals {
+      background: var(--success);
+      grid-column: span 2;
+    }
+
+    .history {
+      min-height: 200px;
+      padding: 16px;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .history h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    #clearHistory {
+      min-height: 32px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+    }
+
+    #historyList {
+      display: grid;
+      gap: 8px;
+      max-height: 440px;
+      overflow: auto;
+    }
+
+    .history-item {
+      width: 100%;
+      min-height: unset;
+      padding: 10px;
+      overflow-wrap: anywhere;
+      background: var(--display);
+      text-align: right;
+    }
+
+    .history-item small {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+    }
+
+    .empty-history {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 680px) {
+      body {
+        padding: 12px;
+        align-items: start;
+      }
+
+      .app {
+        max-width: 460px;
+        grid-template-columns: 1fr;
+      }
+
+      .history {
+        min-height: 100px;
+      }
+
+      #historyList {
+        max-height: 180px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .calculator {
+        padding: 12px;
+      }
+
+      .keys {
+        gap: 6px;
+      }
+
+      button {
+        min-height: 44px;
+        font-size: 0.85rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="calculator" aria-label="Scientific calculator">
+      <div class="display">
+        <input id="expression" aria-label="Expression" autocomplete="off" spellcheck="false" />
+        <div id="result" aria-live="polite">0</div>
+      </div>
+
+      <div class="toolbar">
+        <button class="function" id="angleMode" type="button">DEG</button>
+        <button class="function" data-action="memory-clear" type="button">MC</button>
+        <button class="function" data-action="memory-recall" type="button">MR</button>
+        <button class="function" data-action="memory-add" type="button">M+</button>
+        <button class="function" data-action="memory-subtract" type="button">M−</button>
+      </div>
+
+      <div class="keys">
+        <button class="danger" data-action="clear" type="button">AC</button>
+        <button class="function" data-action="delete" type="button">DEL</button>
+        <button class="function" data-insert="(" type="button">(</button>
+        <button class="function" data-insert=")" type="button">)</button>
+        <button class="function" data-insert="%" type="button">%</button>
+        <button class="operator" data-insert="/" type="button">÷</button>
+
+        <button class="function" data-insert="sin(" type="button">sin</button>
+        <button class="function" data-insert="cos(" type="button">cos</button>
+        <button class="function" data-insert="tan(" type="button">tan</button>
+        <button class="function" data-insert="asin(" type="button">sin⁻¹</button>
+        <button class="function" data-insert="acos(" type="button">cos⁻¹</button>
+        <button class="function" data-insert="atan(" type="button">tan⁻¹</button>
+
+        <button class="function" data-insert="sinh(" type="button">sinh</button>
+        <button class="function" data-insert="cosh(" type="button">cosh</button>
+        <button class="function" data-insert="tanh(" type="button">tanh</button>
+        <button class="function" data-insert="sqrt(" type="button">√</button>
+        <button class="function" data-insert="cbrt(" type="button">∛</button>
+        <button class="operator" data-insert="*" type="button">×</button>
+
+        <button class="function" data-insert="log(" type="button">log</button>
+        <button class="function" data-insert="ln(" type="button">ln</button>
+        <button class="function" data-insert="exp(" type="button">eˣ</button>
+        <button class="function" data-insert="abs(" type="button">abs</button>
+        <button class="function" data-insert="!" type="button">x!</button>
+        <button class="operator" data-insert="-" type="button">−</button>
+
+        <button class="function" data-insert="^2" type="button">x²</button>
+        <button class="function" data-insert="^" type="button">xʸ</button>
+        <button class="function" data-insert="pi" type="button">π</button>
+        <button class="function" data-insert="e" type="button">e</button>
+        <button class="function" data-insert="Ans" type="button">Ans</button>
+        <button class="operator" data-insert="+" type="button">+</button>
+
+        <button data-insert="7" type="button">7</button>
+        <button data-insert="8" type="button">8</button>
+        <button data-insert="9" type="button">9</button>
+        <button data-insert="4" type="button">4</button>
+        <button data-insert="5" type="button">5</button>
+        <button data-insert="6" type="button">6</button>
+
+        <button data-insert="1" type="button">1</button>
+        <button data-insert="2" type="button">2</button>
+        <button data-insert="3" type="button">3</button>
+        <button data-insert="0" type="button">0</button>
+        <button data-insert="." type="button">.</button>
+        <button class="equals" data-action="calculate" type="button">=</button>
+      </div>
+    </section>
+
+    <aside class="history" aria-label="Calculation history">
+      <div class="history-header">
+        <h2>History</h2>
+        <button class="function" id="clearHistory" type="button">Clear</button>
+      </div>
+      <div id="historyList">
+        <div class="empty-history">Your calculations will appear here.</div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const expressionInput = document.getElementById("expression");
+    const resultDisplay = document.getElementById("result");
+    const angleModeButton = document.getElementById("angleMode");
+    const historyList = document.getElementById("historyList");
+
+    let isDegrees = true;
+    let lastAnswer = 0;
+    let memory = 0;
+    let history = [];
+
+    const functions = new Set([
+      "sin", "cos", "tan", "asin", "acos", "atan",
+      "sinh", "cosh", "tanh", "sqrt", "cbrt",
+      "log", "ln", "exp", "abs"
+    ]);
+
+    function tokenize(source) {
+      const tokens = [];
+      const pattern =
+        /\s*(?:(\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?)|([A-Za-z]+)|([()+\-*/^%!]))/y;
+
+      let position = 0;
+
+      while (position < source.length) {
+        pattern.lastIndex = position;
+        const match = pattern.exec(source);
+
+        if (!match) {
+          if (/^\s*$/.test(source.slice(position))) break;
+          throw new Error("Invalid input");
+        }
+
+        position = pattern.lastIndex;
+
+        if (match[1]) {
+          tokens.push({ type: "number", value: Number(match[1]) });
+        } else if (match[2]) {
+          tokens.push({ type: "identifier", value: match[2] });
+        } else {
+          tokens.push({ type: match[3], value: match[3] });
+        }
+      }
+
+      return addImplicitMultiplication(tokens);
+    }
+
+    function addImplicitMultiplication(tokens) {
+      const output = [];
+
+      for (let i = 0; i < tokens.length; i++) {
+        const current = tokens[i];
+        const previous = output[output.length - 1];
+
+        if (previous && endsValue(previous) && startsValue(current)) {
+          const isFunctionCall =
+            previous.type === "identifier" &&
+            functions.has(previous.value) &&
+            current.type === "(";
+
+          if (!isFunctionCall) output.push({ type: "*", value: "*" });
+        }
+
+        output.push(current);
+      }
+
+      return output;
+    }
+
+    function endsValue(token) {
+      return token.type === "number" ||
+        token.type === ")" ||
+        token.type === "!" ||
+        token.type === "%" ||
+        token.type === "identifier";
+    }
+
+    function startsValue(token) {
+      return token.type === "number" ||
+        token.type === "identifier" ||
+        token.type === "(";
+    }
+
+    function factorial(value) {
+      if (!Number.isInteger(value) || value < 0 || value > 170) {
+        throw new Error("Factorial requires an integer from 0 to 170");
+      }
+
+      let answer = 1;
+      for (let i = 2; i <= value; i++) answer *= i;
+      return answer;
+    }
+
+    function evaluate(source) {
+      const tokens = tokenize(source);
+      let index = 0;
+
+      function peek() {
+        return tokens[index];
+      }
+
+      function take(type) {
+        if (peek()?.type !== type) throw new Error("Invalid expression");
+        return tokens[index++];
+      }
+
+      function toRadians(value) {
+        return isDegrees ? value * Math.PI / 180 : value;
+      }
+
+      function fromRadians(value) {
+        return isDegrees ? value * 180 / Math.PI : value;
+      }
+
+      function applyFunction(name, value) {
+        const functionMap = {
+          sin: x => Math.sin(toRadians(x)),
+          cos: x => Math.cos(toRadians(x)),
+          tan: x => Math.tan(toRadians(x)),
+          asin: x => fromRadians(Math.asin(x)),
+          acos: x => fromRadians(Math.acos(x)),
+          atan: x => fromRadians(Math.atan(x)),
+          sinh: Math.sinh,
+          cosh: Math.cosh,
+          tanh: Math.tanh,
+          sqrt: Math.sqrt,
+          cbrt: Math.cbrt,
+          log: Math.log10,
+          ln: Math.log,
+          exp: Math.exp,
+          abs: Math.abs
+        };
+
+        if (!functionMap[name]) throw new Error("Unknown function");
+        return functionMap[name](value);
+      }
+
+      function parsePrimary() {
+        const token = peek();
+        if (!token) throw new Error("Incomplete expression");
+
+        if (token.type === "number") {
+          index++;
+          return token.value;
+        }
+
+        if (token.type === "+" || token.type === "-") {
+          index++;
+          const value = parseExpression(25);
+          return token.type === "-" ? -value : value;
+        }
+
+        if (token.type === "(") {
+          index++;
+          const value = parseExpression(0);
+          take(")");
+          return value;
+        }
+
+        if (token.type === "identifier") {
+          index++;
+          const name = token.value;
+
+          if (functions.has(name)) {
+            take("(");
+            const argument = parseExpression(0);
+            take(")");
+            return applyFunction(name, argument);
+          }
+
+          const constants = {
+            pi: Math.PI,
+            e: Math.E,
+            Ans: lastAnswer
+          };
+
+          if (Object.hasOwn(constants, name)) return constants[name];
+          throw new Error("Unknown name");
+        }
+
+        throw new Error("Invalid expression");
+      }
+
+      function parseExpression(minPrecedence) {
+        let left = parsePrimary();
+
+        while (peek()) {
+          const token = peek();
+
+          if (token.type === "!" || token.type === "%") {
+            if (40 < minPrecedence) break;
+            index++;
+            left = token.type === "!" ? factorial(left) : left / 100;
+            continue;
+          }
+
+          const precedence = {
+            "+": 10,
+            "-": 10,
+            "*": 20,
+            "/": 20,
+            "^": 30
+          }[token.type];
+
+          if (precedence === undefined || precedence < minPrecedence) break;
+
+          index++;
+          const right = parseExpression(
+            token.type === "^" ? precedence : precedence + 1
+          );
+
+          switch (token.type) {
+            case "+": left += right; break;
+            case "-": left -= right; break;
+            case "*": left *= right; break;
+            case "/": left /= right; break;
+            case "^": left = Math.pow(left, right); break;
+          }
+        }
+
+        return left;
+      }
+
+      if (!tokens.length) throw new Error("Enter an expression");
+
+      const value = parseExpression(0);
+      if (index !== tokens.length || !Number.isFinite(value)) {
+        throw new Error("Math error");
+      }
+
+      return value;
+    }
+
+    function formatNumber(value) {
+      if (Object.is(value, -0)) return "0";
+      return Number(value.toPrecision(12)).toString();
+    }
+
+    function updatePreview() {
+      const source = expressionInput.value.trim();
+
+      if (!source) {
+        resultDisplay.textContent = "0";
+        return;
+      }
+
+      try {
+        resultDisplay.textContent = formatNumber(evaluate(source));
+      } catch {
+        resultDisplay.textContent = "…";
+      }
+    }
+
+    function addToHistory(expression, result) {
+      history.unshift({ expression, result });
+      history = history.slice(0, 20);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      historyList.replaceChildren();
+
+      if (history.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-history";
+        empty.textContent = "Your calculations will appear here.";
+        historyList.append(empty);
+        return;
+      }
+
+      history.forEach(item => {
+        const button = document.createElement("button");
+        button.className = "history-item";
+        button.type = "button";
+
+        const expression = document.createElement("small");
+        expression.textContent = item.expression;
+
+        const result = document.createElement("span");
+        result.textContent = item.result;
+
+        button.append(expression, result);
+        button.addEventListener("click", () => {
+          expressionInput.value = item.result;
+          updatePreview();
+          expressionInput.focus();
+        });
+
+        historyList.append(button);
+      });
+    }
+
+    function calculate() {
+      const source = expressionInput.value.trim();
+      if (!source) return;
+
+      try {
+        const value = evaluate(source);
+        const formatted = formatNumber(value);
+        lastAnswer = value;
+        resultDisplay.textContent = formatted;
+        addToHistory(source, formatted);
+        expressionInput.value = formatted;
+        expressionInput.focus();
+      } catch {
+        resultDisplay.textContent = "Error";
+      }
+    }
+
+    document.querySelectorAll("[data-insert], [data-action]").forEach(button => {
+      button.addEventListener("click", () => {
+        const { insert, action } = button.dataset;
+
+        if (insert !== undefined) {
+          const start = expressionInput.selectionStart;
+          const end = expressionInput.selectionEnd;
+          const current = expressionInput.value;
+
+          expressionInput.value =
+            current.slice(0, start) + insert + current.slice(end);
+
+          const cursor = start + insert.length;
+          expressionInput.setSelectionRange(cursor, cursor);
+          expressionInput.focus();
+          updatePreview();
+          return;
+        }
+
+        switch (action) {
+          case "clear":
+            expressionInput.value = "";
+            updatePreview();
+            break;
+          case "delete": {
+            const start = expressionInput.selectionStart;
+            const end = expressionInput.selectionEnd;
+            const current = expressionInput.value;
+
+            if (start !== end) {
+              expressionInput.value = current.slice(0, start) + current.slice(end);
+              expressionInput.setSelectionRange(start, start);
+            } else if (start > 0) {
+              expressionInput.value =
+                current.slice(0, start - 1) + current.slice(start);
+              expressionInput.setSelectionRange(start - 1, start - 1);
+            }
+
+            expressionInput.focus();
+            updatePreview();
+            break;
+          }
+          case "calculate":
+            calculate();
+            break;
+          case "memory-clear":
+            memory = 0;
+            break;
+          case "memory-recall":
+            expressionInput.value += "Ans";
+            // Replace the inserted Ans with the stored memory value.
+            expressionInput.value =
+              expressionInput.value.slice(0, -3) + formatNumber(memory);
+            expressionInput.focus();
+            updatePreview();
+            break;
+          case "memory-add":
+          case "memory-subtract":
+            try {
+              memory += (action === "memory-add" ? 1 : -1) *
+                evaluate(expressionInput.value || "0");
+            } catch {
+              // Ignore memory operations on incomplete expressions.
+            }
+            break;
+        }
+      });
+    });
+
+    angleModeButton.addEventListener("click", () => {
+      isDegrees = !isDegrees;
+      angleModeButton.textContent = isDegrees ? "DEG" : "RAD";
+      updatePreview();
+    });
+
+    document.getElementById("clearHistory").addEventListener("click", () => {
+      history = [];
+      renderHistory();
+    });
+
+    expressionInput.addEventListener("input", updatePreview);
+
+    expressionInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        calculate();
+      } else if (event.key === "Escape") {
+        expressionInput.value = "";
+        updatePreview();
+      }
+    });
+
+    document.addEventListener("keydown", event => {
+      if (document.activeElement === expressionInput) return;
+
+      if (/^[0-9.+\-*/^()%!]$/.test(event.key)) {
+        expressionInput.value += event.key;
+        expressionInput.focus();
+        updatePreview();
+      } else if (event.key === "Enter" || event.key === "=") {
+        event.preventDefault();
+        calculate();
+      } else if (event.key === "Backspace") {
+        expressionInput.value = expressionInput.value.slice(0, -1);
+        expressionInput.focus();
+        updatePreview();
+      } else if (event.key === "Escape") {
+        expressionInput.value = "";
+        updatePreview();
+      }
+    });
+
+    renderHistory();
+  </script>
+</body>
+</html>
