@@ -439,7 +439,14 @@
         const functionMap = {
           sin: x => Math.sin(toRadians(x)),
           cos: x => Math.cos(toRadians(x)),
-          tan: x => Math.tan(toRadians(x)),
+          tan: x => {
+            const radians = toRadians(x);
+            // Tangent is undefined when cosine is zero (odd multiples of 90°).
+            if (Math.abs(Math.cos(radians)) < 1e-15) {
+              throw new Error("Tangent is undefined at this angle");
+            }
+            return Math.tan(radians);
+          },
           asin: x => fromRadians(Math.asin(x)),
           acos: x => fromRadians(Math.acos(x)),
           atan: x => fromRadians(Math.atan(x)),
