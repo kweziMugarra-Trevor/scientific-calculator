@@ -751,5 +751,85 @@
 
     renderHistory();
   </script>
+  <style>
+    .analytics-privacy-button { position: fixed; bottom: 8px; right: 8px; z-index: 900; background: #283349; color: #fff; border: 1px solid #8a9ab0; border-radius: 6px; padding: 7px 10px; font: inherit; cursor: pointer; }
+    .analytics-consent { position: fixed; z-index: 1000; left: 12px; right: 12px; bottom: 48px; max-width: 570px; margin: auto; padding: 18px; color: #fff; background: #1c273b; border: 1px solid #8a9ab0; border-radius: 12px; box-shadow: 0 4px 24px #0008; font-family: system-ui, sans-serif; }
+    .analytics-consent[hidden] { display: none; }
+    .analytics-consent p { margin: 0 0 12px; line-height: 1.45; }
+    .analytics-consent a { color: #b9d6ff; }
+    .analytics-consent-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .analytics-consent-actions button { background: #344563; color: #fff; border: 1px solid #a5b7d0; border-radius: 6px; padding: 8px 12px; font: inherit; cursor: pointer; }
+  </style>
+  <button class="analytics-privacy-button" id="privacyChoices" type="button">Privacy choices</button>
+  <section class="analytics-consent" id="analyticsConsent" role="region" aria-label="Analytics privacy choice" hidden>
+    <p><strong>Optional analytics</strong></p>
+    <p>May we use Google Analytics cookies to count visits and understand devices, browsers and approximate locations? Your choice is optional and you can change it anytime using Privacy choices. Calculator expressions are not sent by this analytics code. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google privacy policy</a></p>
+    <div class="analytics-consent-actions">
+      <button id="analyticsAccept" type="button">Accept analytics</button>
+      <button id="analyticsDecline" type="button">Decline analytics</button>
+    </div>
+  </section>
+  <script>
+    (() => {
+      const measurementId = 'G-60Z6FBDJR7';
+      const choiceKey = 'calculator-analytics-choice';
+      const panel = document.getElementById('analyticsConsent');
+      let choice = null;
+      let started = false;
+      try { choice = localStorage.getItem(choiceKey); } catch (_) {}
+      function startAnalytics() {
+        if (started) return;
+        started = true;
+        window['ga-disable-' + measurementId] = false;
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+        window.gtag('js', new Date());
+        window.gtag('config', measurementId, {
+          send_page_view: false,
+          allow_google_signals: false,
+          allow_ad_personalization_signals: false,
+          page_location: location.origin + location.pathname
+        });
+        window.gtag('event', 'page_view', {
+          page_title: 'Scientific Calculator',
+          page_location: location.origin + location.pathname
+        });
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(measurementId);
+        document.head.appendChild(script);
+      }
+      function clearAnalyticsCookies() {
+        const host = location.hostname;
+        const parts = host.split('.');
+        const domains = ['', host];
+        for (let i = 0; i < parts.length - 1; i++) domains.push('.' + parts.slice(i).join('.'));
+        document.cookie.split(';').forEach(item => {
+          const name = item.trim().split('=')[0];
+          if (name === '_ga' || name.startsWith('_ga_')) {
+            domains.forEach(domain => { document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax' + (domain ? '; domain=' + domain : ''); });
+          }
+        });
+      }
+      function setChoice(value) {
+        const wasStarted = started;
+        choice = value;
+        try { localStorage.setItem(choiceKey, value); } catch (_) {}
+        panel.hidden = true;
+        if (value === 'accepted') {
+          startAnalytics();
+        } else {
+          window['ga-disable-' + measurementId] = true;
+          clearAnalyticsCookies();
+          if (wasStarted) location.reload();
+        }
+      }
+      document.getElementById('privacyChoices').addEventListener('click', () => { panel.hidden = false; });
+      document.getElementById('analyticsAccept').addEventListener('click', () => setChoice('accepted'));
+      document.getElementById('analyticsDecline').addEventListener('click', () => setChoice('declined'));
+      if (choice === 'accepted') startAnalytics();
+      else if (choice !== 'declined') panel.hidden = false;
+    })();
+  </script>
 </body>
 </html>
